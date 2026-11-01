@@ -41,17 +41,18 @@ jobs:
           d=Path('android/app/src/main/res/drawable')
           d.mkdir(parents=True,exist_ok=True)
           (d/'ic_stat_watch.xml').write_text('''<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24"><path android:fillColor="#FFFFFFFF" android:pathData="M7,1h10v4H7z M7,19h10v4H7z M6,6h12v12H6z"/></vector>''')
-          (d/'ic_large_watch.xml').write_text('''<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64"><path android:fillColor="#FF89B4FA" android:pathData="M22,2h20v14H22z M22,48h20v14H22z M10,14h44v36H10z"/><path android:fillColor="#FF1E1E2E" android:pathData="M16,20h32v24H16z"/></vector>''')
+          # Keep only PNG for ic_large_watch; XML with same resource name conflicts.
+          # (d/'ic_large_watch.xml').write_text('''<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64"><path android:fillColor="#FF89B4FA" android:pathData="M22,2h20v14H22z M22,48h20v14H22z M10,14h44v36H10z"/><path android:fillColor="#FF1E1E2E" android:pathData="M16,20h32v24H16z"/></vector>''')
           # Generate real PNG assets (not just vector drawables) to test
           # whether Haylou Fun reads the app icon or notification large icon.
           import struct, zlib
           def png(path, size, color):
               w=h=size
-              raw=b''.join(b'\\x00'+bytes(color)*w for _ in range(h))
+              raw=b''.join(b'\x00'+bytes(color)*w for _ in range(h))
               def chunk(tag, data):
                   return struct.pack('>I',len(data))+tag+data+struct.pack('>I',zlib.crc32(tag+data)&0xffffffff)
               path.parent.mkdir(parents=True,exist_ok=True)
-              path.write_bytes(b'\\x89PNG\\r\\n\\x1a\\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',w,h,8,2,0,0,0))+chunk(b'IDAT',zlib.compress(raw))+chunk(b'IEND',b''))
+              path.write_bytes(b'\x89PNG\\r\\n\x1a\\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',w,h,8,2,0,0,0))+chunk(b'IDAT',zlib.compress(raw))+chunk(b'IEND',b''))
           png(d/'ic_large_watch.png',96,(40,160,220))
           # Distinct cyan launcher icon, visible in Android launcher and app settings.
           for density,size in [('mdpi',48),('hdpi',72),('xhdpi',96),('xxhdpi',144),('xxxhdpi',192)]:
