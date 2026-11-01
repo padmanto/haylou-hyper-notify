@@ -1,0 +1,54 @@
+name: Build Hyper Notify Lab APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate Android scaffold
+        run: |
+          flutter create --platforms=android --org com.padmanto --project-name haylou_notification_showcase .
+      - name: Enable Android notifications and icons
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android/app/src/main/AndroidManifest.xml')
+          s=p.read_text()
+          s=s.replace('<application', '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <application', 1)
+          p.write_text(s)
+          p=Path('android/app/build.gradle.kts')
+          if p.exists():
+              s=p.read_text()
+              s=s.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true')
+              s=s.replace('dependencies {', 'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")')
+              if 'dependencies {' not in s:
+                  s+='\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
+              p.write_text(s)
+          else:
+              p=Path('android/app/build.gradle')
+              s=p.read_text().replace('compileOptions {','compileOptions {\n        coreLibraryDesugaringEnabled true')
+              s+='\ndependencies { coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4" }\n'
+              p.write_text(s)
+          d=Path('android/app/src/main/res/drawable')
+          d.mkdir(parents=True,exist_ok=True)
+          (d/'ic_stat_watch.xml').write_text('''<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24"><path android:fillColor="#FFFFFFFF" android:pathData="M7,1h10v4H7z M7,19h10v4H7z M6,6h12v12H6z"/></vector>''')
+          (d/'ic_large_watch.xml').write_text('''<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="64dp" android:height="64dp" android:viewportWidth="64" android:viewportHeight="64"><path android:fillColor="#FF89B4FA" android:pathData="M22,2h20v14H22z M22,48h20v14H22z M10,14h44v36H10z"/><path android:fillColor="#FF1E1E2E" android:pathData="M16,20h32v24H16z"/></vector>''')
+          PY
+      - name: Dependencies
+        run: flutter pub get
+      - name: Build debug APK
+        run: flutter build apk --debug
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: hyper-notify-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
