@@ -19,6 +19,8 @@ class _HomeState extends State<Home> {
   final message = TextEditingController(text: 'Replication lag exceeded 30 seconds');
   final emoji = TextEditingController(text: '🚨');
   bool bigText = true, highPriority = true, largeIcon = true;
+  String testMode = 'big';
+  String category = 'message';
   String status = 'Ready';
   int sequence = 0;
   static const presets = [
@@ -39,12 +41,20 @@ class _HomeState extends State<Home> {
           'hyper_showcase', 'Hyper Notify Lab',
           channelDescription: 'Notification forwarding tests for Haylou Watch Hyper',
           importance: Importance.max, priority: Priority.high,
-          styleInformation: bigText ? BigTextStyleInformation(content) : null,
+          styleInformation: testMode == 'chat'
+              ? MessagingStyleInformation(
+                  const Person(name: 'Hyper Notify Lab'),
+                  conversationTitle: title.text,
+                  messages: [Message(content, DateTime.now(), const Person(name: 'Test Sender'))],
+                )
+              : (bigText ? BigTextStyleInformation(content) : null),
           largeIcon: largeIcon ? const DrawableResourceAndroidBitmap('ic_large_watch') : null,
           icon: 'ic_stat_watch',
           enableVibration: highPriority, playSound: highPriority,
           visibility: NotificationVisibility.public,
-          category: AndroidNotificationCategory.message,
+          category: category == 'email' ? AndroidNotificationCategory.email
+            : category == 'status' ? AndroidNotificationCategory.status
+            : AndroidNotificationCategory.message,
         )));
       setState(() => status = 'Posted to Android. Check Haylou Fun and watch.');
     } catch (e) { setState(() => status = 'Error: $e'); }
@@ -67,7 +77,29 @@ class _HomeState extends State<Home> {
       TextField(controller: title, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder())),
       const SizedBox(height: 10),
       TextField(controller: message, minLines: 2, maxLines: 5, decoration: const InputDecoration(labelText: 'Message', border: OutlineInputBorder())),
-      SwitchListTile(title: const Text('Expanded big text'), value: bigText, onChanged: (v)=>setState(()=>bigText=v)),
+      const SizedBox(height: 12),
+      const Text('Icon / notification experiments', style: TextStyle(fontWeight: FontWeight.bold)),
+      DropdownButtonFormField<String>(
+        value: testMode,
+        decoration: const InputDecoration(labelText: 'Notification style'),
+        items: const [
+          DropdownMenuItem(value: 'big', child: Text('Big text')),
+          DropdownMenuItem(value: 'chat', child: Text('MessagingStyle (chat)')),
+          DropdownMenuItem(value: 'plain', child: Text('Plain notification')),
+        ],
+        onChanged: (v) => setState(() { testMode = v ?? 'big'; bigText = testMode == 'big'; }),
+      ),
+      DropdownButtonFormField<String>(
+        value: category,
+        decoration: const InputDecoration(labelText: 'Android category'),
+        items: const [
+          DropdownMenuItem(value: 'message', child: Text('Message')),
+          DropdownMenuItem(value: 'email', child: Text('Email')),
+          DropdownMenuItem(value: 'status', child: Text('Status')),
+        ],
+        onChanged: (v) => setState(() => category = v ?? 'message'),
+      ),
+      SwitchListTile(title: const Text('Expanded big text'), value: bigText, onChanged: (v)=>setState(() { bigText=v; testMode=v ? 'big' : 'plain'; })),
       SwitchListTile(title: const Text('Large Android icon'), value: largeIcon, onChanged: (v)=>setState(()=>largeIcon=v)),
       SwitchListTile(title: const Text('Sound and vibration'), value: highPriority, onChanged: (v)=>setState(()=>highPriority=v)),
       Card(child: ListTile(leading: const Icon(Icons.watch), title: Text('${emoji.text} ${title.text}'), subtitle: Text(message.text))),
